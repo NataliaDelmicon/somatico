@@ -509,9 +509,9 @@ tabix -p vcf af-only-gnomad-chr9.vcf.gz
 ```
 
 # Anexo 2 – Execução manual do pipeline de identificação e filtragem de variantes somáticas utilizando GATK Mutect2
-# As análises foram realizadas por meio da execução individual dos comandos do pipeline fornecido pelo professor, contemplando duas abordagens: análise pareada tumor-normal e análise utilizando Panel of Normals (PoN).
+### As análises foram realizadas por meio da execução individual dos comandos do pipeline fornecido pelo professor, contemplando duas abordagens: análise pareada tumor-normal e análise utilizando Panel of Normals (PoN).
 
-# antes de iniciar, vou conferir os arquivos existentes
+# Conferir os arquivos existentes
 ls -lh run.chr13-chr19.sh run.chr13-chr19.pon.sh
 
 cat run.chr13-chr19.sh
@@ -520,16 +520,16 @@ cat run.chr13-chr19.pon.sh
 
 grep '^>' hg19.fa
 
-# quantos intervalos foram criados
+# Verificar quantos intervalos foram criados
 awk '!/^@/ {print $1}' hg19.interval_list | sort -n | uniq -c
 
-# confirmar os identificadores das amostras no BAM
+# Confirmar os identificadores das amostras no BAM
 
 samtools view -H tumor_wp190.bam | grep '^@RG'
 samtools view -H tumor_wp191.bam | grep '^@RG'
 
 
-# rodar o Mutect2 para o par WP190/WP191
+# Rodar o Mutect2 para o par WP190/WP191
 ./gatk-4.2.2.0/gatk Mutect2 \
   -R hg19.fa \
   -I tumor_wp190.bam \
@@ -539,10 +539,10 @@ samtools view -H tumor_wp191.bam | grep '^@RG'
   -L hg19.interval_list \
   -O WP190.somatic.vcf.gz
 
-# conferir
+## Conferir
 zgrep -vc '^#' WP190.somatic.vcf.gz
 
-# gerar a tabela do tumor WP190
+# Gerar a tabela do tumor WP190
 
 ./gatk-4.2.2.0/gatk GetPileupSummaries \
   -I tumor_wp190.bam \
@@ -550,38 +550,37 @@ zgrep -vc '^#' WP190.somatic.vcf.gz
   -L hg19.interval_list \
   -O WP190.table
 
-# gerar a tabela da amostra normal WP191
+# Gerar a tabela da amostra normal WP191
 ./gatk-4.2.2.0/gatk GetPileupSummaries \
   -I tumor_wp191.bam \
   -V af-only-gnomad-chr13-chr19.vcf.gz \
   -L hg19.interval_list \
   -O WP191.table
-# conferir tabelas geradas
+## Conferir tabelas geradas
 head -n 5 WP190.table WP191.table
 
-# calculateContamination, estimar a contaminação no tumor WP190
+# CalculateContamination, estimar a contaminação no tumor WP190
 ./gatk-4.2.2.0/gatk CalculateContamination \
   -I WP190.table \
   -matched WP191.table \
   -O WP190.contamination.table
 
-# conferindo
 cat WP190.contamination.table
 
-# filtrar as chamadas do par WP190/WP191
+# Filtrar as chamadas do par WP190/WP191
 ./gatk-4.2.2.0/gatk FilterMutectCalls \
   -R hg19.fa \
   -V WP190.somatic.vcf.gz \
   --contamination-table WP190.contamination.table \
   -O WP190.filtered.vcf.gz
 
-# ver quantas variantes passaram no filtro
+# Ver quantas variantes passaram no filtro
 zcat WP190.filtered.vcf.gz | awk '!/^#/ {print $7}' | sort | uniq -c
 
-# confirmar se é 5 mesmo
+# Confirmar se é 5 mesmo
 zgrep -vc '^#' WP190.filtered.vcf.gz
 
-# análise pareada WP017/WP018
+# Análise pareada WP017/WP018
 ./gatk-4.2.2.0/gatk Mutect2 \
   -R hg19.fa \
   -I tumor_wp017.bam \
@@ -591,131 +590,130 @@ zgrep -vc '^#' WP190.filtered.vcf.gz
   -L hg19.interval_list \
   -O WP017.somatic.vcf.gz
 
-# contar as variantes candidatas
+# Contar as variantes candidatas
   zgrep -vc '^#' WP017.somatic.vcf.gz
 
-# gerar as tabelas de contagem:
-# tumor WP017:
+# Gerar as tabelas de contagem:
+## Tumor WP017:
  ./gatk-4.2.2.0/gatk GetPileupSummaries \
   -I tumor_wp017.bam \
   -V af-only-gnomad-chr13-chr19.vcf.gz \
   -L hg19.interval_list \
   -O WP017.table
 
-# normal WP018:
+## Normal WP018:
   ./gatk-4.2.2.0/gatk GetPileupSummaries \
   -I tumor_wp018.bam \
   -V af-only-gnomad-chr13-chr19.vcf.gz \
   -L hg19.interval_list \
   -O WP018.table
 
-# conferir os arquivos
+## Conferir os arquivos
   head -n 5 WP017.table WP018.table
 
-# calcular contaminação
+# Calcular contaminação
   ./gatk-4.2.2.0/gatk CalculateContamination \
   -I WP017.table \
   -matched WP018.table \
   -O WP017.contamination.table
 
-# conferir resultado
+## Conferir resultado
   cat WP017.contamination.table
 
-# filtrar as variantes identificadas pelo Mutect2
+# Filtrar as variantes identificadas pelo Mutect2
   ./gatk-4.2.2.0/gatk FilterMutectCalls \
   -R hg19.fa \
   -V WP017.somatic.vcf.gz \
   --contamination-table WP017.contamination.table \
   -O WP017.filtered.vcf.gz
 
-# conferir após o filtro
+## conferir após o filtro
   zcat WP017.filtered.vcf.gz | awk '!/^#/ {print $7}' | sort | uniq -c
 
-# identificar as variantes PASS
+# Identificar as variantes PASS
 
   for vcf in WP190.filtered.vcf.gz WP017.filtered.vcf.gz; do
   printf '\n%s\n' "$vcf"
   zcat "$vcf" | awk '/^#CHROM/ || (!/^#/ && $7 == "PASS")'
 done
 
-# executar WP017 com PoN
+# Executar WP017 com PoN
 sh run.chr13-chr19.pon.sh tumor_wp017.bam tumor_wp018.bam WP017 WP018
 
-# conferir as variantes do PASS
+# Conferir as variantes do PASS
 zgrep -v '^#' WP017.filtered.pon.vcf.gz | \
 awk -F'\t' '{print $7}' | sort | uniq -c
 
-# contar somente as variantes PASS do WP017
+# Contar somente as variantes PASS do WP017
 zcat WP017.filtered.vcf.gz | \
 awk -F'\t' '!/^#/ && $7=="PASS"' | wc -l
 
-# conferir estimativa de contaminação
+# Conferir estimativa de contaminação
 cat WP017.contamination.pon.table
 
-# confirmar a referência dos BAMs:
+# Confirmar a referência dos BAMs:
 samtools idxstats tumor_JAK2.bam | grep -E '^(9|13|19)[[:space:]]'
 samtools idxstats normal_JAK2.bam | grep -E '^(9|13|19)[[:space:]]'
 
-# executar Mutect2 para WP043 com PoN
-## Conferir os arquivos disponíveis
+# Executar Mutect2 para WP043 com PoN
+# Conferir os arquivos disponíveis
 ls -lh tumor_JAK2.bam normal_JAK2.bam
 
-# conferir os identificadores das amostras
+# Conferir os identificadores das amostras
 samtools view -H tumor_JAK2.bam | grep '^@RG'
 samtools view -H normal_JAK2.bam | grep '^@RG'
 
-# conferir a referência atual
+## Conferir a referência atual
 grep '^>' hg19.fa
 
-# preparar a referência do cromossomo 9
-## baixar o cromossomo 9 (hg19)
+# Preparar a referência do cromossomo 9
+## Baixar o cromossomo 9 (hg19)
 wget -c https://hgdownload.soe.ucsc.edu/goldenPath/hg19/chromosomes/chr9.fa.gz
 
-# criar uma referência específica para JAK2
+# Criar uma referência específica para JAK2
 zcat chr9.fa.gz | sed 's/^>chr/>/' > hg19_chr9.fa
 
-# indexar a referência
+# Indexar a referência
 samtools faidx hg19_chr9.fa
 
-# criar o dicionário
+# Criar o dicionário
 ./gatk-4.2.2.0/gatk CreateSequenceDictionary \
   -R hg19_chr9.fa \
   -O hg19_chr9.dict
 
-# conferir os arquivos gerados
+# Conferir os arquivos gerados
 ls -lh hg19_chr9.fa hg19_chr9.fa.fai hg19_chr9.dict
 
 grep '^>' hg19_chr9.fa
 
 cat hg19_chr9.fa.fai
 
-# gerar a lista de intervalos do cromossomo 9
+# Gerar a lista de intervalos do cromossomo 9
 ./gatk-4.2.2.0/gatk ScatterIntervalsByNs \
   -R hg19_chr9.fa \
   -O hg19_chr9.interval_list \
   -OT ACGT
 
-# verificar se o arquivo foi criado
+# Verificar se o arquivo foi criado
 ls -lh hg19_chr9.interval_list
 
-# conferir os intervalos gerados
+# Conferir os intervalos gerados
 awk '!/^@/ {print $1}' hg19_chr9.interval_list | sort | uniq -c
 
-
-# verificar os arquivos gnomAD disponíveis
+# Verificar os arquivos gnomAD disponíveis
 ls -lh *gnomad*
 
-# conferir os cromossomos presentes no gnomAD
+# Conferir os cromossomos presentes no gnomAD
 zgrep -v '^#' af-only-gnomad-chr9.vcf.gz | \
 cut -f1 | sort -u
 
-# contar as variantes disponíveis
+# Contar as variantes disponíveis
 zgrep -vc '^#' af-only-gnomad-chr9.vcf.gz
 
-# conferir o cabeçalho do VCF
+# Conferir o cabeçalho do VCF
 zgrep '^##contig=' af-only-gnomad-chr9.vcf.gz | head
 
-# executar Mutect2 para WP043/WP044 (JAK2)
+# Executar Mutect2 para WP043/WP044 (JAK2)
 ./gatk-4.2.2.0/gatk Mutect2 \
   -R hg19_chr9.fa \
   -I tumor_JAK2.bam \
@@ -725,37 +723,37 @@ zgrep '^##contig=' af-only-gnomad-chr9.vcf.gz | head
   -L hg19_chr9.interval_list \
   -O WP043.somatic.vcf.gz
 
-# contar as variantes candidatas identificadas
+# Contar as variantes candidatas identificadas
   zgrep -vc '^#' WP043.somatic.vcf.gz
 
-# gerar as tabelas de contagem do tumor e do normal
-# gerar a tabela do tumor WP043
+# Gerar as tabelas de contagem do tumor e do normal
+# Gerar a tabela do tumor WP043
 ./gatk-4.2.2.0/gatk GetPileupSummaries \
   -I tumor_JAK2.bam \
   -V af-only-gnomad-chr9.vcf.gz \
   -L hg19_chr9.interval_list \
   -O WP043.table
 
-# gerar a tabela da amostra normal WP044
+# Gerar a tabela da amostra normal WP044
 ./gatk-4.2.2.0/gatk GetPileupSummaries \
   -I normal_JAK2.bam \
   -V af-only-gnomad-chr9.vcf.gz \
   -L hg19_chr9.interval_list \
   -O WP044.table
 
-# conferir as tabelas geradas
+# Conferir as tabelas geradas
   head -n 5 WP043.table WP044.table
 
-# estimar a contaminação no tumor WP043
+# Estimar a contaminação no tumor WP043
   ./gatk-4.2.2.0/gatk CalculateContamination \
   -I WP043.table \
   -matched WP044.table \
   -O WP043.contamination.table
 
-# conferir a estimativa da contaminação
+# Conferir a estimativa da contaminação
   cat WP043.contamination.table
 
-# filtrar as variantes do par WP043/WP044
+# Filtrar as variantes do par WP043/WP044
 
 ./gatk-4.2.2.0/gatk FilterMutectCalls \
   -R hg19_chr9.fa \
@@ -767,14 +765,14 @@ zgrep '^##contig=' af-only-gnomad-chr9.vcf.gz | head
 zcat WP043.filtered.vcf.gz | \
 awk '!/^#/ {print $7}' | sort | uniq -c
 
-# contar o total de variantes no VCF filtrado
+# Contar o total de variantes no VCF filtrado
 zgrep -vc '^#' WP043.filtered.vcf.gz
 
-# contar somente as variantes PASS
+# Contar somente as variantes PASS
 zcat WP043.filtered.vcf.gz | \
 awk -F'\t' '!/^#/ && $7=="PASS"' | wc -l
 
-# executar Mutect2 para WP043 com PoN
+# Executar Mutect2 para WP043 com PoN
 ./gatk-4.2.2.0/gatk Mutect2 \
   -R hg19_chr9.fa \
   -I tumor_JAK2.bam \
@@ -783,10 +781,10 @@ awk -F'\t' '!/^#/ && $7=="PASS"' | wc -l
   -L hg19_chr9.interval_list \
   -O WP043.somatic.pon.vcf.gz
 
-# contar as variantes candidatas identificadas com PoN
+# Contar as variantes candidatas identificadas com PoN
 zgrep -vc '^#' WP043.somatic.pon.vcf.gz
 
-# gerar a tabela do tumor WP043
+# Gerar a tabela do tumor WP043
 ./gatk-4.2.2.0/gatk GetPileupSummaries \
   -I tumor_JAK2.bam \
   -V af-only-gnomad-chr9.vcf.gz \
@@ -798,7 +796,7 @@ zgrep -vc '^#' WP043.somatic.pon.vcf.gz
   -I WP043.pon.table \
   -O WP043.contamination.pon.table
 
-# conferir
+## conferir
   cat WP043.contamination.pon.table
 
 # Filtrar as variantes com PoN
@@ -819,16 +817,16 @@ zgrep -vc '^#' WP043.filtered.pon.vcf.gz
 zcat WP043.filtered.pon.vcf.gz | \
 awk -F'\t' '!/^#/ && $7=="PASS"' | wc -l
 
-# identificar as 14 variantes PASS da WP043 com PoN, incluindo suas posições genômicas.
+# Identificar as 14 variantes PASS da WP043 com PoN, incluindo suas posições genômicas.
 zcat WP043.filtered.pon.vcf.gz | \
 awk -F'\t' '!/^#/ && $7=="PASS" {print $1, $2, $4, $5, $7}'
 
 # FIM
 
-## INTERPRETAÇÃO DOS RESULTADOS
-# WP043: apresentou a maior diferença entre as abordagens, com 1 variante PASS na análise pareada e 14 na análise com PoN.
-# WP017: apresentou 1 variante PASS em cada abordagem.
-# WP190: apresentou 2 variantes PASS na análise pareada e 3 com PoN
+# INTERPRETAÇÃO DOS RESULTADOS
+### WP043: apresentou a maior diferença entre as abordagens, com 1 variante PASS na análise pareada e 14 na análise com PoN.
+### WP017: apresentou 1 variante PASS em cada abordagem.
+### WP190: apresentou 2 variantes PASS na análise pareada e 3 com PoN
 
 # ----------------------------------------
 
